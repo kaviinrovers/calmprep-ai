@@ -2,6 +2,14 @@
 
 A complete AI-powered exam preparation platform designed for college students, featuring PDF analysis, question prediction, voice assistant, and honest study monitoring.
 
+## 🌐 Live Application
+
+- **🚀 Frontend**: https://calmprep-ai.vercel.app
+- **⚙️ API Backend**: https://calmprep-ai.onrender.com
+- **📦 GitHub**: https://github.com/kaviinrovers/calmprep-ai
+
+**Try it now!** Visit the live app and start preparing for your exams stress-free!
+
 ---
 
 ## ✨ Features
