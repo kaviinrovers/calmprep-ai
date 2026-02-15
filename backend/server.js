@@ -25,6 +25,7 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'https://calmprep-ai.vercel.app',
+    'https://calmprep-ai-kaviinrovers.vercel.app',
     // Add your production domain here
 ];
 
