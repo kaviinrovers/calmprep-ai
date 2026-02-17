@@ -1,16 +1,16 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 /**
  * Analyze PDF content unit-wise with AI
  */
 export const analyzePDFContent = async (pdfText) => {
-    try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-
-        const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
+  try {
+    const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
 
 CONTENT TO ANALYZE:
 ${pdfText}
@@ -83,44 +83,49 @@ RESPOND IN JSON FORMAT:
   ]
 }`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        // Parse JSON response
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error('Failed to parse AI response');
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert exam preparation tutor. Always respond with valid JSON."
+        },
+        {
+          role: "user",
+          content: prompt
         }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
 
-        const analysis = JSON.parse(jsonMatch[0]);
-        return analysis;
-    } catch (error) {
-        console.error('AI Analysis Error:', error);
-        throw new Error('Failed to analyze PDF content with AI');
-    }
+    const responseText = completion.choices[0].message.content;
+    const analysis = JSON.parse(responseText);
+    return analysis;
+  } catch (error) {
+    console.error('AI Analysis Error:', error);
+    throw new Error('Failed to analyze PDF content with AI');
+  }
 };
 
 /**
  * Generate exam-ready answer for a question
  */
 export const generateAnswer = async (question, marks, pdfContext, language = 'english') => {
-    try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+  try {
+    const languageInstruction = {
+      english: 'Respond in English',
+      tamil: 'Respond in Tamil',
+      mixed: 'Respond in a mix of Tamil and English (Tanglish), using Tamil for explanations and English for technical terms',
+    };
 
-        const languageInstruction = {
-            english: 'Respond in English',
-            tamil: 'Respond in Tamil',
-            mixed: 'Respond in a mix of Tamil and English (Tanglish), using Tamil for explanations and English for technical terms',
-        };
+    const marksGuidance = {
+      2: 'Provide a brief 2-3 line answer with key keywords',
+      5: 'Provide a 5-7 point answer with brief explanations for each point',
+      10: 'Provide a detailed answer with Introduction (1-2 lines), Body (detailed explanation with examples), and Conclusion (summary)',
+    };
 
-        const marksGuidance = {
-            2: 'Provide a brief 2-3 line answer with key keywords',
-            5: 'Provide a 5-7 point answer with brief explanations for each point',
-            10: 'Provide a detailed answer with Introduction (1-2 lines), Body (detailed explanation with examples), and Conclusion (summary)',
-        };
-
-        const prompt = `You are a calm, friendly exam preparation tutor. Generate an exam-ready answer for this question based ONLY on the provided study material.
+    const prompt = `You are a calm, friendly exam preparation tutor. Generate an exam-ready answer for this question based ONLY on the provided study material.
 
 QUESTION: ${question}
 MARKS: ${marks}
@@ -141,37 +146,48 @@ IMPORTANT: Even if the answer is short, it MUST be correct and based on the uplo
 
 Generate the answer now:`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const answer = response.text();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful exam preparation tutor."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+    });
 
-        return {
-            question,
-            marks,
-            answer,
-            language,
-            source: 'Based on your uploaded study material',
-        };
-    } catch (error) {
-        console.error('Answer Generation Error:', error);
-        throw new Error('Failed to generate answer');
-    }
+    const answer = completion.choices[0].message.content;
+
+    return {
+      question,
+      marks,
+      answer,
+      language,
+      source: 'Based on your uploaded study material',
+    };
+  } catch (error) {
+    console.error('Answer Generation Error:', error);
+    throw new Error('Failed to generate answer');
+  }
 };
 
 /**
  * Generate voice assistant response
  */
 export const generateVoiceResponse = async (userMessage, context, language = 'english') => {
-    try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+  try {
+    const languageInstruction = {
+      english: 'Respond in English',
+      tamil: 'Respond in Tamil',
+      mixed: 'Respond in a mix of Tamil and English',
+    };
 
-        const languageInstruction = {
-            english: 'Respond in English',
-            tamil: 'Respond in Tamil',
-            mixed: 'Respond in a mix of Tamil and English',
-        };
-
-        const prompt = `You are a calm, patient, and friendly AI tutor helping a college student prepare for exams.
+    const prompt = `You are a calm, patient, and friendly AI tutor helping a college student prepare for exams.
 
 STUDENT SAYS: "${userMessage}"
 
@@ -188,25 +204,35 @@ INSTRUCTIONS:
 
 Respond naturally:`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const voiceResponse = response.text();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a calm, patient, and friendly tutor."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.8,
+    });
 
-        return voiceResponse;
-    } catch (error) {
-        console.error('Voice Response Error:', error);
-        throw new Error('Failed to generate voice response');
-    }
+    const voiceResponse = completion.choices[0].message.content;
+    return voiceResponse;
+  } catch (error) {
+    console.error('Voice Response Error:', error);
+    throw new Error('Failed to generate voice response');
+  }
 };
 
 /**
  * Conduct viva/oral test
  */
 export const conductViva = async (topic, difficulty = 'medium', language = 'english') => {
-    try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-
-        const prompt = `You are conducting an oral viva/exam for a college student.
+  try {
+    const prompt = `You are conducting an oral viva/exam for a college student.
 
 TOPIC: ${topic}
 DIFFICULTY: ${difficulty}
@@ -219,20 +245,32 @@ Generate ONE viva question that:
 
 Just return the question (no explanation):`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const question = response.text().trim();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are conducting an oral examination."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.9,
+    });
 
-        return question;
-    } catch (error) {
-        console.error('Viva Generation Error:', error);
-        throw new Error('Failed to generate viva question');
-    }
+    const question = completion.choices[0].message.content.trim();
+    return question;
+  } catch (error) {
+    console.error('Viva Generation Error:', error);
+    throw new Error('Failed to generate viva question');
+  }
 };
 
 export default {
-    analyzePDFContent,
-    generateAnswer,
-    generateVoiceResponse,
-    conductViva,
+  analyzePDFContent,
+  generateAnswer,
+  generateVoiceResponse,
+  conductViva,
 };
