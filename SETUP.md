@@ -23,26 +23,20 @@ You should see version numbers (e.g., v18.17.0 and 9.6.7)
 
 ---
 
-## 2️⃣ Install MongoDB
+## 2️⃣ Setup Supabase (Database)
 
-### Option A: MongoDB Atlas (Cloud - Recommended for Beginners)
-1. Go to https://www.mongodb.com/cloud/atlas
-2. Sign up for a free account
-3. Create a free cluster
-4. Get your connection string
-5. Update `.env` file:
-   ```
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/calmprep
-   ```
+CalmPrep AI uses **Supabase** (PostgreSQL) for data storage.
 
-### Option B: Local MongoDB
-1. Download from https://www.mongodb.com/try/download/community
-2. Install MongoDB Community Server
-3. Start MongoDB service
-4. Use default connection string in `.env`:
+1. Go to https://supabase.com/ and sign in.
+2. Create a new project.
+3. Go to **Project Settings** -> **API**.
+4. Copy the **Project URL** and **anon public key**.
+5. Update `backend/.env` file:
    ```
-   MONGODB_URI=mongodb://localhost:27017/calmprep
+   SUPABASE_URL=your_project_url
+   SUPABASE_ANON_KEY=your_anon_key
    ```
+6. Use the SQL editor in Supabase to run the database schema (if provided in `database_schema.sql`).
 
 ---
 
