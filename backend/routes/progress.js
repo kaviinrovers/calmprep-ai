@@ -1,174 +1,97 @@
 import express from 'express';
 import { protect } from '../middleware/auth.js';
-import Report from '../models/Report.js';
-import PDF from '../models/PDF.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
 // @route   POST /api/progress/session
-// @desc    Save study session report
-// @access  Private
 router.post('/session', protect, async (req, res) => {
     try {
-        const {
-            pdfId,
-            duration,
-            unitsCovered,
-            overallProgress,
-            strongAreas,
-            weakAreas,
-            questionsAttempted,
-            questionsCorrect,
-            focusScore,
-            notes,
-        } = req.body;
+        const { pdfId, duration, unitsCovered, overallProgress, strongAreas, weakAreas, questionsAttempted, questionsCorrect, focusScore, notes } = req.body;
 
-        // Validation
-        if (!pdfId || !duration) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide pdfId and duration',
-            });
-        }
+        if (!pdfId || !duration) return res.status(400).json({ success: false, message: 'Missing fields' });
 
-        // Verify PDF exists
-        const pdf = await PDF.findOne({ _id: pdfId, user: req.user._id });
-        if (!pdf) {
-            return res.status(404).json({
-                success: false,
-                message: 'PDF not found',
-            });
-        }
+        // Verify PDF
+        const { data: pdf, error: pdfError } = await supabase
+            .from('pdfs')
+            .select('id')
+            .eq('id', pdfId)
+            .eq('user_id', req.user.id)
+            .single();
 
-        // Create report
-        const report = await Report.create({
-            user: req.user._id,
-            pdfId,
-            duration,
-            unitsCovered: unitsCovered || [],
-            overallProgress: overallProgress || 0,
-            strongAreas: strongAreas || [],
-            weakAreas: weakAreas || [],
-            questionsAttempted: questionsAttempted || 0,
-            questionsCorrect: questionsCorrect || 0,
-            focusScore: focusScore || 100,
-            notes: notes || '',
-        });
+        if (pdfError || !pdf) return res.status(404).json({ success: false, message: 'PDF not found' });
 
-        res.status(201).json({
-            success: true,
-            message: 'Study session saved successfully',
-            report,
-        });
+        const { data: report, error } = await supabase
+            .from('reports')
+            .insert([{
+                user_id: req.user.id,
+                // pdf_id: pdfId, // Note: Schema needs pdf_id field if we want foreign key constraints
+                type: 'quiz', // Defaulting type since schema requires it
+                subject: 'Study Session', // Default subject
+                score: overallProgress || 0,
+                total_questions: questionsAttempted || 0,
+                details: {
+                    unitsCovered,
+                    strongAreas,
+                    weakAreas,
+                    questionsCorrect,
+                    focusScore,
+                    notes,
+                    duration
+                }
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ success: true, message: 'Session saved', report });
     } catch (error) {
         console.error('Save Session Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to save study session',
-        });
+        res.status(500).json({ success: false, message: 'Save failed' });
     }
 });
 
 // @route   GET /api/progress/history
-// @desc    Get all study session reports
-// @access  Private
 router.get('/history', protect, async (req, res) => {
     try {
-        const reports = await Report.find({ user: req.user._id })
-            .populate('pdfId', 'originalName')
-            .sort({ sessionDate: -1 });
+        const { data: reports, error } = await supabase
+            .from('reports')
+            .select('*')
+            .eq('user_id', req.user.id)
+            .order('date', { ascending: false });
 
-        res.json({
-            success: true,
-            count: reports.length,
-            reports,
-        });
+        if (error) throw error;
+
+        res.json({ success: true, count: reports.length, reports });
     } catch (error) {
-        console.error('Get History Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch study history',
-        });
-    }
-});
-
-// @route   GET /api/progress/unit/:pdfId/:unitNumber
-// @desc    Get progress for specific unit
-// @access  Private
-router.get('/unit/:pdfId/:unitNumber', protect, async (req, res) => {
-    try {
-        const { pdfId, unitNumber } = req.params;
-
-        const reports = await Report.find({
-            user: req.user._id,
-            pdfId,
-        });
-
-        // Filter reports that include this unit
-        const unitReports = reports.filter(report =>
-            report.unitsCovered.some(u => u.unitNumber === parseInt(unitNumber))
-        );
-
-        // Calculate unit progress
-        let totalTimeSpent = 0;
-        let avgCompletion = 0;
-
-        unitReports.forEach(report => {
-            const unit = report.unitsCovered.find(u => u.unitNumber === parseInt(unitNumber));
-            if (unit) {
-                totalTimeSpent += unit.timeSpent || 0;
-                avgCompletion += unit.completionPercentage || 0;
-            }
-        });
-
-        if (unitReports.length > 0) {
-            avgCompletion = avgCompletion / unitReports.length;
-        }
-
-        res.json({
-            success: true,
-            unitNumber,
-            sessionsCount: unitReports.length,
-            totalTimeSpent,
-            averageCompletion: avgCompletion.toFixed(2),
-            reports: unitReports,
-        });
-    } catch (error) {
-        console.error('Get Unit Progress Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch unit progress',
-        });
+        res.status(500).json({ success: false, message: 'Fetch failed' });
     }
 });
 
 // @route   GET /api/progress/summary
-// @desc    Get overall progress summary
-// @access  Private
 router.get('/summary', protect, async (req, res) => {
     try {
-        const reports = await Report.find({ user: req.user._id });
+        const { data: reports, error } = await supabase
+            .from('reports')
+            .select('*')
+            .eq('user_id', req.user.id);
 
-        if (reports.length === 0) {
+        if (error) throw error;
+
+        if (!reports || reports.length === 0) {
             return res.json({
                 success: true,
-                message: 'No study sessions yet',
-                summary: {
-                    totalSessions: 0,
-                    totalTimeSpent: 0,
-                    averageProgress: 0,
-                    examReady: false,
-                },
+                message: 'No sessions',
+                summary: { totalSessions: 0, totalTimeSpent: 0, averageProgress: 0, examReady: false }
             });
         }
 
-        // Calculate summary
         const totalSessions = reports.length;
-        const totalTimeSpent = reports.reduce((sum, r) => sum + r.duration, 0);
-        const averageProgress = reports.reduce((sum, r) => sum + r.overallProgress, 0) / totalSessions;
-        const averageFocusScore = reports.reduce((sum, r) => sum + r.focusScore, 0) / totalSessions;
+        // Extract duration from details JSON
+        const totalTimeSpent = reports.reduce((sum, r) => sum + (r.details?.duration || 0), 0);
+        const averageProgress = reports.reduce((sum, r) => sum + (r.score || 0), 0) / totalSessions;
 
-        // Determine if exam ready (simple heuristic)
         const examReady = averageProgress >= 75 && totalSessions >= 3;
 
         res.json({
@@ -177,19 +100,12 @@ router.get('/summary', protect, async (req, res) => {
                 totalSessions,
                 totalTimeSpent,
                 averageProgress: averageProgress.toFixed(2),
-                averageFocusScore: averageFocusScore.toFixed(2),
                 examReady,
-                recommendation: examReady
-                    ? '🎉 You are exam-ready! Keep revising.'
-                    : '📚 Keep studying! You\'re making progress.',
-            },
+                recommendation: examReady ? '🎉 Exam Ready!' : '📚 Keep studying!'
+            }
         });
     } catch (error) {
-        console.error('Get Summary Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch progress summary',
-        });
+        res.status(500).json({ success: false, message: 'Summary failed' });
     }
 });
 

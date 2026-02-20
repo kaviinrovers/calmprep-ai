@@ -29,7 +29,7 @@ const Login = () => {
             <div className="max-w-md w-full">
                 {/* Logo/Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold gradient-text mb-2">CalmPrep AI</h1>
+                    <h1 className="text-4xl font-bold gradient-text mb-2">CalmPrep</h1>
                     <p className="text-gray-600">Your stress-free exam companion</p>
                 </div>
 
@@ -93,7 +93,7 @@ const Login = () => {
 
                 {/* Features */}
                 <div className="mt-8 text-center text-sm text-gray-600 space-y-2">
-                    <p>✨ AI-powered exam preparation</p>
+                    <p>✨ Smart exam preparation</p>
                     <p>📚 Unit-wise PDF analysis</p>
                     <p>🎙️ Voice assistant (Premium)</p>
                 </div>

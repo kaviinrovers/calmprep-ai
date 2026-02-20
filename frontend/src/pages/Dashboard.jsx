@@ -21,14 +21,14 @@ const Dashboard = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center space-x-8">
-                            <h1 className="text-2xl font-bold gradient-text">CalmPrep AI</h1>
+                            <h1 className="text-2xl font-bold gradient-text">CalmPrep</h1>
 
                             <div className="hidden md:flex space-x-4">
                                 <button
                                     onClick={() => setActiveTab('study')}
                                     className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'study'
-                                            ? 'bg-primary text-white'
-                                            : 'text-gray-600 hover:bg-gray-100'
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-600 hover:bg-gray-100'
                                         }`}
                                 >
                                     📚 Study
@@ -36,8 +36,8 @@ const Dashboard = () => {
                                 <button
                                     onClick={() => setActiveTab('progress')}
                                     className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'progress'
-                                            ? 'bg-primary text-white'
-                                            : 'text-gray-600 hover:bg-gray-100'
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-600 hover:bg-gray-100'
                                         }`}
                                 >
                                     📊 Progress
@@ -46,8 +46,8 @@ const Dashboard = () => {
                                     <button
                                         onClick={() => setActiveTab('voice')}
                                         className={`px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'voice'
-                                                ? 'bg-primary text-white'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-primary text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         🎙️ Voice Assistant

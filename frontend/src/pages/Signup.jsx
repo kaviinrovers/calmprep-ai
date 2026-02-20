@@ -48,7 +48,7 @@ const Signup = () => {
             <div className="max-w-md w-full">
                 {/* Logo/Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold gradient-text mb-2">CalmPrep AI</h1>
+                    <h1 className="text-4xl font-bold gradient-text mb-2">CalmPrep</h1>
                     <p className="text-gray-600">Start your stress-free exam journey</p>
                 </div>
 

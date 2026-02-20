@@ -22,7 +22,7 @@ const StudyView = () => {
                         Welcome to Your Study Dashboard
                     </h1>
                     <p className="text-gray-600">
-                        Upload your study material to get started with AI-powered exam preparation
+                        Upload your study material to get started with Smart exam preparation
                     </p>
                 </div>
                 <PDFUpload onUploadSuccess={handleUploadSuccess} />
@@ -44,8 +44,8 @@ const StudyView = () => {
                                 key={unit.unitNumber}
                                 onClick={() => setSelectedUnit(unit)}
                                 className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-all ${selectedUnit?.unitNumber === unit.unitNumber
-                                        ? 'bg-primary text-white shadow-lg'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-primary text-white shadow-lg'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 <div>{unit.unitName || `Unit ${unit.unitNumber}`}</div>

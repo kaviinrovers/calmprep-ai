@@ -37,7 +37,7 @@ const PremiumModal = ({ onClose }) => {
                 key: keyId,
                 amount,
                 currency,
-                name: 'CalmPrep AI',
+                name: 'CalmPrep',
                 description: 'Premium Monthly Subscription',
                 order_id: orderId,
                 handler: async (response) => {
@@ -101,7 +101,7 @@ const PremiumModal = ({ onClose }) => {
                         <div>
                             <h3 className="font-semibold text-gray-800">🎙️ Voice Assistant</h3>
                             <p className="text-gray-600 text-sm">
-                                Talk to AI tutor, get verbal explanations, and practice viva
+                                Talk to Smart tutor, get verbal explanations, and practice viva
                             </p>
                         </div>
                     </div>

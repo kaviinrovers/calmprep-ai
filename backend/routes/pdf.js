@@ -4,219 +4,137 @@ import pdfParse from 'pdf-parse';
 import fs from 'fs';
 import path from 'path';
 import { protect } from '../middleware/auth.js';
-import PDF from '../models/PDF.js';
+import supabase from '../config/supabase.js';
 import { analyzePDFContent } from '../utils/aiService.js';
 
 const router = express.Router();
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = './uploads';
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${file.originalname}`;
-        cb(null, uniqueName);
+        cb(null, `${Date.now()}-${file.originalname}`);
     },
 });
 
-const fileFilter = (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-        cb(null, true);
-    } else {
-        cb(new Error('Only PDF files are allowed'), false);
-    }
-};
-
 const upload = multer({
     storage,
-    fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') cb(null, true);
+        else cb(new Error('Only PDFs allowed'), false);
+    },
 });
 
-// @route   POST /api/pdf/upload
-// @desc    Upload and extract PDF text
-// @access  Private
+// @route POST /api/pdf/upload
 router.post('/upload', protect, upload.single('pdf'), async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please upload a PDF file',
-            });
-        }
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-        // Read and parse PDF
         const dataBuffer = fs.readFileSync(req.file.path);
         const pdfData = await pdfParse(dataBuffer);
 
-        // Save PDF info to database
-        const pdf = await PDF.create({
-            user: req.user._id,
-            filename: req.file.filename,
-            originalName: req.file.originalname,
-            fileSize: req.file.size,
-            extractedText: pdfData.text,
-            analyzed: false,
-        });
+        const { data: pdf, error } = await supabase
+            .from('pdfs')
+            .insert([{
+                user_id: req.user.id,
+                filename: req.file.filename,
+                original_name: req.file.originalname,
+                text_content: pdfData.text,
+                analysis: null
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Cleanup local file
+        fs.unlinkSync(req.file.path);
 
         res.status(201).json({
             success: true,
-            message: 'PDF uploaded successfully. Now analyzing...',
-            pdfId: pdf._id,
-            originalName: pdf.originalName,
+            message: 'PDF uploaded',
+            pdfId: pdf.id,
+            originalName: pdf.original_name,
             pageCount: pdfData.numpages,
         });
     } catch (error) {
-        console.error('PDF Upload Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to upload and parse PDF',
-        });
+        console.error('Upload Error:', error);
+        res.status(500).json({ success: false, message: 'Upload failed' });
     }
 });
 
-// @route   POST /api/pdf/analyze/:id
-// @desc    Analyze PDF content with AI
-// @access  Private
+// @route POST /api/pdf/analyze/:id
 router.post('/analyze/:id', protect, async (req, res) => {
     try {
-        const pdf = await PDF.findOne({ _id: req.params.id, user: req.user._id });
+        const { data: pdf, error: fetchError } = await supabase
+            .from('pdfs')
+            .select('*')
+            .eq('id', req.params.id)
+            .eq('user_id', req.user.id)
+            .single();
 
-        if (!pdf) {
-            return res.status(404).json({
-                success: false,
-                message: 'PDF not found',
-            });
+        if (fetchError || !pdf) return res.status(404).json({ success: false, message: 'PDF not found' });
+
+        if (pdf.analysis) {
+            return res.json({ success: true, message: 'Already analyzed', units: pdf.analysis.units });
         }
 
-        if (pdf.analyzed) {
-            return res.json({
-                success: true,
-                message: 'PDF already analyzed',
-                units: pdf.units,
-            });
-        }
+        const analysis = await analyzePDFContent(pdf.text_content);
 
-        // Analyze with AI
-        const analysis = await analyzePDFContent(pdf.extractedText);
+        const { error: updateError } = await supabase
+            .from('pdfs')
+            .update({ analysis })
+            .eq('id', pdf.id);
 
-        // Update PDF with analysis
-        pdf.units = analysis.units.map(unit => ({
-            unitNumber: unit.unitNumber,
-            unitName: unit.unitName,
-            content: '', // We don't store full content per unit
-            importantTopics: unit.importantTopics.map(topic => ({
-                text: topic.text,
-                importance: topic.importance,
-                startIndex: 0,
-                endIndex: 0,
-            })),
-            predictedQuestions: unit.predictedQuestions.map(q => ({
-                question: q.question,
-                marks: q.marks,
-                guidance: {
-                    howToStart: q.guidance.howToStart,
-                    keyPoints: q.guidance.keyPoints,
-                    expectedLength: q.guidance.expectedLength,
-                    keywords: q.guidance.keywords,
-                },
-            })),
-            studyGuidance: {
-                twoMark: {
-                    expectedLines: unit.studyGuidance.twoMark.expectedLines,
-                    keywords: unit.studyGuidance.twoMark.keywords,
-                },
-                fiveMark: {
-                    expectedPoints: unit.studyGuidance.fiveMark.expectedPoints,
-                    diagramNeeded: unit.studyGuidance.fiveMark.diagramNeeded,
-                    explanation: unit.studyGuidance.fiveMark.explanation,
-                },
-                tenMark: {
-                    structure: unit.studyGuidance.tenMark.structure,
-                    minimumLength: unit.studyGuidance.tenMark.minimumLength,
-                    mustInclude: unit.studyGuidance.tenMark.mustInclude,
-                },
-            },
-        }));
+        if (updateError) throw updateError;
 
-        pdf.analyzed = true;
-        await pdf.save();
-
-        res.json({
-            success: true,
-            message: 'PDF analyzed successfully',
-            units: pdf.units,
-        });
+        res.json({ success: true, message: 'Analyzed successfully', units: analysis.units });
     } catch (error) {
-        console.error('PDF Analysis Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to analyze PDF',
-            error: error.message,
-        });
+        console.error('Analysis Error:', error);
+        res.status(500).json({ success: false, message: 'Analysis failed' });
     }
 });
 
-// @route   GET /api/pdf/list
-// @desc    Get all user PDFs
-// @access  Private
+// @route GET /api/pdf/list
 router.get('/list', protect, async (req, res) => {
     try {
-        const pdfs = await PDF.find({ user: req.user._id })
-            .select('-extractedText')
-            .sort({ uploadedAt: -1 });
+        const { data: pdfs, error } = await supabase
+            .from('pdfs')
+            .select('id, original_name, upload_date, analysis')
+            .eq('user_id', req.user.id)
+            .order('upload_date', { ascending: false });
 
-        res.json({
-            success: true,
-            count: pdfs.length,
-            pdfs,
-        });
+        if (error) throw error;
+
+        res.json({ success: true, count: pdfs.length, pdfs });
     } catch (error) {
-        console.error('Get PDFs Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch PDFs',
-        });
+        res.status(500).json({ success: false, message: 'Fetch failed' });
     }
 });
 
-// @route   GET /api/pdf/:id/units
-// @desc    Get unit-wise analysis
-// @access  Private
+// @route GET /api/pdf/:id/units
 router.get('/:id/units', protect, async (req, res) => {
     try {
-        const pdf = await PDF.findOne({ _id: req.params.id, user: req.user._id });
+        const { data: pdf, error } = await supabase
+            .from('pdfs')
+            .select('*')
+            .eq('id', req.params.id)
+            .eq('user_id', req.user.id)
+            .single();
 
-        if (!pdf) {
-            return res.status(404).json({
-                success: false,
-                message: 'PDF not found',
-            });
+        if (error || !pdf) return res.status(404).json({ success: false, message: 'PDF not found' });
+
+        if (!pdf.analysis) {
+            return res.status(400).json({ success: false, message: 'Not analyzed yet' });
         }
 
-        if (!pdf.analyzed) {
-            return res.status(400).json({
-                success: false,
-                message: 'PDF not yet analyzed. Please analyze first.',
-            });
-        }
-
-        res.json({
-            success: true,
-            pdfName: pdf.originalName,
-            units: pdf.units,
-        });
+        res.json({ success: true, pdfName: pdf.original_name, units: pdf.analysis.units });
     } catch (error) {
-        console.error('Get Units Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch units',
-        });
+        res.status(500).json({ success: false, message: 'Fetch units failed' });
     }
 });
 

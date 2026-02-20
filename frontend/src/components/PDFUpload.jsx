@@ -93,14 +93,14 @@ const PDFUpload = ({ onUploadSuccess }) => {
         <div className="card">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">📄 Upload Study Material</h2>
             <p className="text-gray-600 mb-6">
-                Upload your syllabus, notes, or textbook PDF for AI-powered analysis
+                Upload your syllabus, notes, or textbook PDF for Smart analysis
             </p>
 
             {/* Drag & Drop Zone */}
             <div
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${dragActive
-                        ? 'border-primary bg-blue-50'
-                        : 'border-gray-300 hover:border-primary'
+                    ? 'border-primary bg-blue-50'
+                    : 'border-gray-300 hover:border-primary'
                     }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -183,7 +183,7 @@ const PDFUpload = ({ onUploadSuccess }) => {
                 <div className="mt-6 text-center">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-3"></div>
                     <p className="text-gray-700 font-semibold">
-                        {uploading ? '📤 Uploading PDF...' : '🤖 AI is analyzing your content...'}
+                        {uploading ? '📤 Uploading PDF...' : '🤖 Analyzing your content...'}
                     </p>
                     <p className="text-gray-500 text-sm mt-2">This may take a minute</p>
                 </div>

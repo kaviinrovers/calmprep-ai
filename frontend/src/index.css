@@ -4,46 +4,107 @@
 
 @layer base {
     body {
-        @apply bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen font-sans text-gray-800;
+        @apply bg-[#e0e5ec] min-h-screen font-sans text-gray-800;
+        /* Neumorphic/Soft-UI base background color */
     }
 }
 
 @layer components {
+
+    /* 3D Primary Button */
     .btn-primary {
-        @apply bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105;
+        @apply bg-primary text-white font-bold px-6 py-3 rounded-xl transition-all duration-100 ease-in-out transform;
+        box-shadow: 0 4px 0 theme('colors.primary-shadow'), 0 8px 15px rgba(0, 0, 0, 0.2);
     }
 
+    .btn-primary:active {
+        @apply transform translate-y-1;
+        box-shadow: 0 0 0 theme('colors.primary-shadow'), 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 3D Secondary Button */
     .btn-secondary {
-        @apply bg-white text-primary border-2 border-primary px-6 py-3 rounded-xl font-semibold hover:bg-primary hover:text-white transition-all duration-300;
+        @apply bg-white text-primary border-2 border-primary font-bold px-6 py-3 rounded-xl transition-all duration-100 ease-in-out transform;
+        box-shadow: 0 4px 0 theme('colors.blue.200'), 0 8px 15px rgba(0, 0, 0, 0.1);
     }
 
+    .btn-secondary:active {
+        @apply transform translate-y-1;
+        box-shadow: 0 0 0 theme('colors.blue.200'), 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 3D Danger Button (for errors/logout) */
+    .btn-danger {
+        @apply bg-danger text-white font-bold px-6 py-3 rounded-xl transition-all duration-100 ease-in-out transform;
+        box-shadow: 0 4px 0 theme('colors.danger-shadow'), 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-danger:active {
+        @apply transform translate-y-1;
+        box-shadow: 0 0 0 theme('colors.danger-shadow'), 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 3D Card */
     .card {
-        @apply bg-white rounded-2xl shadow-xl p-6 transition-all duration-300 hover:shadow-2xl;
+        @apply bg-white rounded-2xl p-6 transition-all duration-300 border-2 border-gray-100;
+        box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.05);
+    }
+
+    .card:hover {
+        @apply transform -translate-y-1;
+        box-shadow: 12px 12px 0px theme('colors.blue.100');
     }
 
     .input-field {
-        @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all duration-300;
+        @apply w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none transition-all duration-200 bg-gray-50;
+        box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05);
+        /* Inner shadow for depth */
+    }
+
+    .input-field:focus {
+        @apply bg-white border-primary;
+        box-shadow: 4px 4px 0 theme('colors.blue.100');
     }
 
     .badge-high {
-        @apply bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold inline-flex items-center gap-1;
+        @apply bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold border-b-4 border-green-200;
     }
 
     .badge-medium {
-        @apply bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold inline-flex items-center gap-1;
+        @apply bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold border-b-4 border-yellow-200;
     }
 
     .badge-low {
-        @apply bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-semibold inline-flex items-center gap-1;
+        @apply bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold border-b-4 border-gray-200;
     }
 }
 
 @layer utilities {
     .gradient-text {
-        @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+        @apply text-primary font-extrabold;
+        /* Replaced gradient with solid bold primary color for cleaner 3D look */
+        text-shadow: 2px 2px 0px theme('colors.blue.200');
     }
 
     .glass {
-        @apply bg-white bg-opacity-80 backdrop-blur-lg;
+        @apply bg-white bg-opacity-90 backdrop-blur-lg border border-white/20;
+    }
+
+    .floating-3d {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0% {
+            transform: translateY(0px);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+
+        100% {
+            transform: translateY(0px);
+        }
     }
 }

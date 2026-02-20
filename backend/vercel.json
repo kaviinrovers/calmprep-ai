@@ -7,9 +7,10 @@
         }
     ],
     "env": {
-        "MONGODB_URI": "@mongodb_uri",
+        "SUPABASE_URL": "@supabase_url",
+        "SUPABASE_ANON_KEY": "@supabase_anon_key",
         "JWT_SECRET": "@jwt_secret",
-        "GEMINI_API_KEY": "@gemini_api_key",
+        "OPENAI_API_KEY": "@openai_api_key",
         "RAZORPAY_KEY_ID": "@razorpay_key_id",
         "RAZORPAY_KEY_SECRET": "@razorpay_key_secret"
     }

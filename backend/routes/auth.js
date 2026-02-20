@@ -1,6 +1,7 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
@@ -12,122 +13,116 @@ const generateToken = (id) => {
 };
 
 // @route   POST /api/auth/signup
-// @desc    Register new user
-// @access  Public
 router.post('/signup', async (req, res) => {
     try {
         const { name, email, password, language } = req.body;
 
-        // Validation
         if (!name || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide name, email, and password',
-            });
+            return res.status(400).json({ success: false, message: 'Please provide all fields' });
         }
 
         // Check if user exists
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({
-                success: false,
-                message: 'User already exists with this email',
-            });
+        const { data: existingUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: 'User already exists' });
         }
 
-        // Create user
-        const user = await User.create({
-            name,
-            email,
-            password,
-            language: language || 'english',
-        });
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Generate token
-        const token = generateToken(user._id);
+        // Create user
+        const { data: newUser, error } = await supabase
+            .from('users')
+            .insert([
+                {
+                    name,
+                    email,
+                    password_hash: hashedPassword,
+                    language: language || 'english',
+                    is_premium: false
+                }
+            ])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const token = generateToken(newUser.id);
 
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
             token,
             user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                language: user.language,
-                isPremium: user.isPremium,
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+                language: newUser.language,
+                isPremium: newUser.is_premium
             },
         });
     } catch (error) {
         console.error('Signup Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error during signup',
-        });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 // @route   POST /api/auth/login
-// @desc    Login user
-// @access  Public
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Validation
         if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide email and password',
-            });
+            return res.status(400).json({ success: false, message: 'Please provide email and password' });
         }
 
-        // Check user exists and get password field
-        const user = await User.findOne({ email }).select('+password');
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid email or password',
-            });
+        // Get user from Supabase
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (error || !user) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         // Check password
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid email or password',
-            });
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        // Generate token
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
+
+        // Check premium status
+        const isPremiumActive = user.is_premium;
+        // Note: You can add expiry check logic here if needed
 
         res.json({
             success: true,
-            message: 'Login successful',
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 language: user.language,
-                isPremium: user.isPremiumActive(),
-                premiumExpiryDate: user.premiumExpiryDate,
+                isPremium: isPremiumActive,
+                premiumExpiryDate: user.premium_expiry,
             },
         });
     } catch (error) {
         console.error('Login Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error during login',
-        });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 // @route   GET /api/auth/me
-// @desc    Get current user profile
-// @access  Private
 import { protect } from '../middleware/auth.js';
 
 router.get('/me', protect, async (req, res) => {
@@ -135,51 +130,38 @@ router.get('/me', protect, async (req, res) => {
         res.json({
             success: true,
             user: {
-                id: req.user._id,
+                id: req.user.id,
                 name: req.user.name,
                 email: req.user.email,
                 language: req.user.language,
-                isPremium: req.user.isPremiumActive(),
-                premiumExpiryDate: req.user.premiumExpiryDate,
+                isPremium: req.user.is_premium,
+                premiumExpiryDate: req.user.premium_expiry,
             },
         });
     } catch (error) {
-        console.error('Get User Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error fetching user',
-        });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 // @route   PUT /api/auth/language
-// @desc    Update user language preference
-// @access  Private
 router.put('/language', protect, async (req, res) => {
     try {
         const { language } = req.body;
 
         if (!['english', 'tamil', 'mixed'].includes(language)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid language. Must be: english, tamil, or mixed',
-            });
+            return res.status(400).json({ success: false, message: 'Invalid language' });
         }
 
-        req.user.language = language;
-        await req.user.save();
+        const { error } = await supabase
+            .from('users')
+            .update({ language })
+            .eq('id', req.user.id);
 
-        res.json({
-            success: true,
-            message: 'Language preference updated',
-            language,
-        });
+        if (error) throw error;
+
+        res.json({ success: true, message: 'Language updated', language });
     } catch (error) {
-        console.error('Update Language Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error updating language',
-        });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 

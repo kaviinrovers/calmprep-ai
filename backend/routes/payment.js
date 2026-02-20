@@ -2,30 +2,23 @@ import express from 'express';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { protect } from '../middleware/auth.js';
-import User from '../models/User.js';
-import Subscription from '../models/Subscription.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
-// Initialize Razorpay
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// @route   POST /api/payment/create-order
-// @desc    Create Razorpay order for premium subscription
-// @access  Private
+// @route POST /api/payment/create-order
 router.post('/create-order', protect, async (req, res) => {
     try {
         const options = {
-            amount: 9900, // ₹99 in paise
+            amount: 9900,
             currency: 'INR',
-            receipt: `receipt_${req.user._id}_${Date.now()}`,
-            notes: {
-                userId: req.user._id.toString(),
-                plan: 'Premium Monthly',
-            },
+            receipt: `receipt_${req.user.id}_${Date.now()}`,
+            notes: { userId: req.user.id, plan: 'Premium' },
         };
 
         const order = await razorpay.orders.create(options);
@@ -38,100 +31,83 @@ router.post('/create-order', protect, async (req, res) => {
             keyId: process.env.RAZORPAY_KEY_ID,
         });
     } catch (error) {
-        console.error('Create Order Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to create payment order',
-        });
+        res.status(500).json({ success: false, message: 'Order creation failed' });
     }
 });
 
-// @route   POST /api/payment/verify
-// @desc    Verify Razorpay payment and activate premium
-// @access  Private
+// @route POST /api/payment/verify
 router.post('/verify', protect, async (req, res) => {
     try {
         const { orderId, paymentId, signature } = req.body;
 
-        if (!orderId || !paymentId || !signature) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing payment details',
-            });
-        }
-
-        // Verify signature
         const body = orderId + '|' + paymentId;
         const expectedSignature = crypto
             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
             .update(body.toString())
             .digest('hex');
 
-        const isValid = expectedSignature === signature;
-
-        if (!isValid) {
-            return res.status(400).json({
-                success: false,
-                message: 'Payment verification failed',
-            });
+        if (expectedSignature !== signature) {
+            return res.status(400).json({ success: false, message: 'Invalid signature' });
         }
 
-        // Calculate expiry date (30 days from now)
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 30);
 
-        // Create subscription record
-        await Subscription.create({
-            user: req.user._id,
-            orderId,
-            paymentId,
-            signature,
-            amount: 9900,
-            status: 'completed',
-            expiresAt: expiryDate,
-        });
+        // Save subscription
+        const { error: subError } = await supabase
+            .from('subscriptions')
+            .insert([{
+                user_id: req.user.id,
+                razorpay_order_id: orderId,
+                razorpay_payment_id: paymentId,
+                razorpay_signature: signature,
+                amount: 9900,
+                status: 'completed'
+            }]);
 
-        // Update user's premium status
-        req.user.isPremium = true;
-        req.user.premiumExpiryDate = expiryDate;
-        await req.user.save();
+        if (subError) throw subError;
+
+        // Update user
+        const { error: userError } = await supabase
+            .from('users')
+            .update({
+                is_premium: true,
+                premium_expiry: expiryDate.toISOString()
+            })
+            .eq('id', req.user.id);
+
+        if (userError) throw userError;
 
         res.json({
             success: true,
-            message: '🎉 Premium activated successfully! Enjoy voice assistant and study monitoring.',
+            message: 'Premium activated!',
             isPremium: true,
             expiryDate,
         });
     } catch (error) {
-        console.error('Verify Payment Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to verify payment',
-        });
+        console.error('Payment Verify Error:', error);
+        res.status(500).json({ success: false, message: 'Verification failed' });
     }
 });
 
-// @route   GET /api/payment/status
-// @desc    Check premium subscription status
-// @access  Private
+// @route GET /api/payment/status
 router.get('/status', protect, async (req, res) => {
     try {
-        const isPremiumActive = req.user.isPremiumActive();
+        const isPremium = req.user.is_premium;
+        const expiryDate = new Date(req.user.premium_expiry);
+        const now = new Date();
+
+        const isActive = isPremium && expiryDate > now;
+        const daysLeft = isActive ? Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24)) : 0;
 
         res.json({
             success: true,
-            isPremium: isPremiumActive,
-            expiryDate: req.user.premiumExpiryDate,
-            daysLeft: isPremiumActive
-                ? Math.ceil((req.user.premiumExpiryDate - new Date()) / (1000 * 60 * 60 * 24))
-                : 0,
+            isPremium: isActive,
+            expiryDate: req.user.premium_expiry,
+            daysLeft,
         });
     } catch (error) {
-        console.error('Get Status Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to check subscription status',
-        });
+        res.status(500).json({ success: false, message: 'Status check failed' });
     }
 });
 

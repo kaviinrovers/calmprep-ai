@@ -134,7 +134,7 @@ const VoiceAssistant = () => {
                         Voice Assistant (Premium)
                     </h2>
                     <p className="text-gray-600 mb-6">
-                        Talk to your AI tutor, practice viva, and get verbal explanations
+                        Talk to your Smart tutor, practice viva, and get verbal explanations
                     </p>
                 </div>
 
@@ -159,7 +159,7 @@ const VoiceAssistant = () => {
                     🎙️ Voice Assistant
                 </h2>
                 <p className="text-gray-600">
-                    Your calm, patient AI tutor - speak naturally and get helpful guidance
+                    Your calm, patient Smart tutor - speak naturally and get helpful guidance
                 </p>
             </div>
 
@@ -186,7 +186,7 @@ const VoiceAssistant = () => {
 
                 {conversation.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                        <p>Click the microphone button to start talking with your AI tutor</p>
+                        <p>Click the microphone button to start talking with your Smart tutor</p>
                     </div>
                 ) : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -194,14 +194,14 @@ const VoiceAssistant = () => {
                             <div
                                 key={idx}
                                 className={`p-4 rounded-lg ${msg.role === 'You'
-                                        ? 'bg-blue-100 ml-8'
-                                        : msg.role === 'AI'
-                                            ? 'bg-green-100 mr-8'
-                                            : 'bg-yellow-100'
+                                    ? 'bg-blue-100 ml-8'
+                                    : msg.role === 'AI'
+                                        ? 'bg-green-100 mr-8'
+                                        : 'bg-yellow-100'
                                     }`}
                             >
                                 <p className="font-semibold text-sm text-gray-600 mb-1">
-                                    {msg.role}
+                                    {msg.role === 'AI' ? 'Smart Tutor' : msg.role}
                                 </p>
                                 <p className="text-gray-800">{msg.text}</p>
                             </div>
@@ -215,15 +215,15 @@ const VoiceAssistant = () => {
                 {loading ? (
                     <div>
                         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-3"></div>
-                        <p className="text-gray-600">AI is thinking...</p>
+                        <p className="text-gray-600">Thinking...</p>
                     </div>
                 ) : (
                     <div>
                         <button
                             onClick={isListening ? stopListening : startListening}
                             className={`w-32 h-32 rounded-full flex items-center justify-center text-6xl transition-all transform ${isListening
-                                    ? 'bg-danger text-white scale-110 animate-pulse'
-                                    : 'bg-primary text-white hover:scale-105'
+                                ? 'bg-danger text-white scale-110 animate-pulse'
+                                : 'bg-primary text-white hover:scale-105'
                                 }`}
                         >
                             {isListening ? '⏸️' : '🎤'}

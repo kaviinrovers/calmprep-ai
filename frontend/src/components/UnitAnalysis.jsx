@@ -41,7 +41,7 @@ const UnitAnalysis = ({ unit }) => {
                     {unit.unitName || `Unit ${unit.unitNumber}`}
                 </h2>
                 <p className="text-gray-600">
-                    AI-powered analysis with important topics, predicted questions, and study guidance
+                    Smart analysis with important topics, predicted questions, and study guidance
                 </p>
             </div>
 

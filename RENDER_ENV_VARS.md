@@ -1,104 +1,100 @@
-# 🔧 Render Environment Variables - Copy and Paste
+# 🔑 Render Environment Variables - Complete Configuration
 
-Add these **6 environment variables** on the Render page:
+**Add these to your Render backend service:**
 
----
-
-## 1. PORT
-```
-NAME_OF_VARIABLE: PORT
-value: 5000
-```
+Go to: https://dashboard.render.com → `calmprep-ai` → Environment tab
 
 ---
 
-## 2. MONGODB_URI
+## Environment Variables to Add:
+
+### 1. PORT
 ```
-NAME_OF_VARIABLE: MONGODB_URI
-value: mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/calmprep
+Name: PORT
+Value: 5000
 ```
-⚠️ **IMPORTANT**: You need to create MongoDB Atlas database first!
-- If you haven't: https://www.mongodb.com/cloud/atlas → Create FREE cluster
-- Get connection string and replace above
+
+### 2. MONGODB_URI
+```
+Name: MONGODB_URI
+Value: mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/calmprep
+```
+⚠️ **You need to create MongoDB Atlas first!** See instructions below.
+
+### 3. JWT_SECRET
+```
+Name: JWT_SECRET
+Value: calmprep-super-secret-jwt-production-2026
+```
+
+### 4. GEMINI_API_KEY ✅
+```
+Name: GEMINI_API_KEY
+Value: AIzaSyAo5e9JZ5NJ9D-jlVwF7Ql1A4XGt7jwo2I
+```
+✅ **This is your API key - ready to use!**
+
+### 5. RAZORPAY_KEY_ID
+```
+Name: RAZORPAY_KEY_ID
+Value: rzp_test_your_key_id
+```
+⚠️ Get from: https://dashboard.razorpay.com → Settings → API Keys
+
+### 6. RAZORPAY_KEY_SECRET
+```
+Name: RAZORPAY_KEY_SECRET
+Value: your_razorpay_secret
+```
 
 ---
 
-## 3. JWT_SECRET
-```
-NAME_OF_VARIABLE: JWT_SECRET
-value: calmprep-super-secret-jwt-key-production-2026
-```
+## 🗄️ MongoDB Atlas Setup (Required!)
+
+**You MUST set up MongoDB for signup to work:**
+
+1. **Create Account**: https://www.mongodb.com/cloud/atlas
+2. **Create FREE Cluster** (M0 tier)
+3. **Database Access** → Add User:
+   - Username: `calmprep`
+   - Password: (create a strong one, e.g., `CalmPrep2026!`)
+4. **Network Access** → Add IP:
+   - Click "Allow Access from Anywhere"
+   - IP: `0.0.0.0/0`
+5. **Get Connection String**:
+   - Click "Connect" on your cluster
+   - Choose "Connect your application"
+   - Copy string, replace `<password>` with your password
+   - Example: `mongodb+srv://calmprep:CalmPrep2026!@cluster0.xxxxx.mongodb.net/calmprep`
 
 ---
 
-## 4. GEMINI_API_KEY
-```
-NAME_OF_VARIABLE: GEMINI_API_KEY
-value: YOUR_GEMINI_API_KEY
-```
-⚠️ Get from: https://makersuite.google.com/app/apikey
+## 💳 Razorpay Setup (For Payments)
 
----
-
-## 5. RAZORPAY_KEY_ID
-```
-NAME_OF_VARIABLE: RAZORPAY_KEY_ID
-value: rzp_test_YOUR_KEY_ID
-```
-⚠️ Get from: https://dashboard.razorpay.com (Settings → API Keys)
-💡 Use **test** keys for now, switch to **live** keys after testing
-
----
-
-## 6. RAZORPAY_KEY_SECRET
-```
-NAME_OF_VARIABLE: RAZORPAY_KEY_SECRET
-value: YOUR_RAZORPAY_SECRET
-```
+1. Visit: https://razorpay.com
+2. Sign up / Login
+3. Go to Settings → API Keys
+4. Generate **Test Key**
+5. Copy both Key ID and Secret
 
 ---
 
 ## ✅ After Adding All Variables
 
-Click **"Deploy Web Service"** button at the bottom!
-
-⏳ Deployment will take 5-10 minutes
-🎉 You'll get a URL like: `https://calmprep-backend.onrender.com`
-
----
-
-## 🚨 Don't Have API Keys Yet?
-
-### Quick Setup:
-
-**MongoDB Atlas (Required - 2 minutes):**
-1. Go to https://mongodb.com/cloud/atlas
-2. Sign up → Create FREE M0 cluster
-3. Database Access → Add user with password
-4. Network Access → Allow 0.0.0.0/0
-5. Get connection string
-
-**Gemini API (Required - 1 minute):**
-1. https://makersuite.google.com/app/apikey
-2. Create API Key → Copy it
-
-**Razorpay (Required - 3 minutes):**
-1. https://razorpay.com → Sign up
-2. Dashboard → Settings → API Keys
-3. Generate Test Key → Copy both Key ID and Secret
+1. Click "**Save Changes**" in Render
+2. Render will automatically redeploy (5 minutes)
+3. Check logs: Should see "✅ MongoDB Connected"
+4. Try signup again - **it will work!**
 
 ---
 
-## 📋 Deployment Checklist
+## Current Status:
 
-- [ ] All 6 environment variables added
-- [ ] MongoDB Atlas cluster created
-- [ ] Gemini API key obtained
-- [ ] Razorpay test keys obtained
-- [ ] Clicked "Deploy Web Service"
-- [ ] Waited for deployment (green checkmark)
-- [ ] Copied backend URL for frontend setup
+- ✅ **PORT**: Ready
+- ✅ **JWT_SECRET**: Ready
+- ✅ **GEMINI_API_KEY**: Ready ✨
+- ⚠️ **MONGODB_URI**: Need to create
+- ⚠️ **RAZORPAY_KEY_ID**: Need to get
+- ⚠️ **RAZORPAY_KEY_SECRET**: Need to get
 
----
-
-**Need help getting API keys? Let me know which one!**
+**Priority**: Set up **MongoDB Atlas** first - this is blocking signup!

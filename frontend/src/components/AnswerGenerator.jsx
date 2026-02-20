@@ -104,7 +104,7 @@ const AnswerGenerator = ({ pdfId, unit }) => {
                     disabled={loading}
                     className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Generating Answer...' : 'Generate Answer'}
+                    {loading ? 'Thinking...' : 'Get Answer'}
                 </button>
 
                 {/* Error Message */}

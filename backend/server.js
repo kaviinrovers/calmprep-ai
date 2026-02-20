@@ -1,7 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB from './config/db.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -16,9 +15,6 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
-
-// Connect to MongoDB
-connectDB();
 
 // Middleware
 const allowedOrigins = [
@@ -84,7 +80,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`\n✨ CalmPrep AI Backend Running`);
     console.log(`📡 Server: http://localhost:${PORT}`);
-    console.log(`🗄️  Database: ${process.env.MONGODB_URI}`);
+    console.log(`🗄️  Database: Supabase (PostgreSQL)`);
     console.log(`🤖 AI: OpenAI GPT`);
     console.log(`💳 Payment: Razorpay\n`);
 });
