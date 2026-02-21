@@ -22,11 +22,16 @@ router.post('/signup', async (req, res) => {
         }
 
         // Check if user exists
-        const { data: existingUser } = await supabase
+        const { data: existingUser, error: searchError } = await supabase
             .from('users')
             .select('*')
             .eq('email', email)
-            .single();
+            .maybeSingle();
+
+        if (searchError) {
+            console.error('Database Search Error:', searchError);
+            throw searchError;
+        }
 
         if (existingUser) {
             return res.status(400).json({ success: false, message: 'User already exists' });
