@@ -39,6 +39,19 @@ const AuthFlow = () => {
         setLoading(true);
         try {
             const response = await axios.post('/api/auth/verify-otp', { email, otp });
+
+            // If the backend returns a token, it means the user exists and is now logged in
+            if (response.data.token) {
+                const { token } = response.data;
+                localStorage.setItem('token', token);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+                alert('🎉 Login successful! Welcome back.');
+                window.location.href = '/dashboard';
+                return;
+            }
+
+            // Otherwise, it's a new user, proceed to set password
             setVerificationToken(response.data.verificationToken);
             setStep('password');
         } catch (err) {
@@ -88,7 +101,7 @@ const AuthFlow = () => {
                         {['email', 'otp', 'password'].map((s, idx) => (
                             <div key={s} className="flex flex-col items-center flex-1">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step === s ? 'bg-primary text-white scale-110 shadow-lg' :
-                                        (idx < ['email', 'otp', 'password'].indexOf(step) ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500')
+                                    (idx < ['email', 'otp', 'password'].indexOf(step) ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500')
                                     }`}>
                                     {idx < ['email', 'otp', 'password'].indexOf(step) ? '✓' : idx + 1}
                                 </div>

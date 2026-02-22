@@ -231,9 +231,33 @@ router.post('/verify-otp', async (req, res) => {
             .update({ verified: true })
             .eq('id', record.id);
 
-        // Generate a temporary verification token (simple hash for security)
+        // Generate a temporary verification token
         const verificationToken = crypto.createHash('sha256').update(email + otp + process.env.JWT_SECRET).digest('hex');
 
+        // Check if user exists for instant login
+        const { data: user } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+
+        if (user) {
+            // Existing user - login immediately
+            const token = generateToken(user.id);
+            return res.json({
+                success: true,
+                message: 'Login successful via OTP',
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    isPremium: user.is_premium
+                }
+            });
+        }
+
+        // New user - return token to proceed to password setting
         res.json({
             success: true,
             message: 'Code verified successfully',

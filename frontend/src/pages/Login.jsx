@@ -35,13 +35,25 @@ const Login = () => {
 
                 {/* Login Card */}
                 <div className="card">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Welcome Back</h2>
+                    <div className="mb-6">
+                        <Link
+                            to="/verify"
+                            className="w-full flex items-center justify-center space-x-2 py-4 px-4 bg-primary text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all transform hover:-translate-y-1"
+                        >
+                            <span>📥</span>
+                            <span>Sign in with Email code</span>
+                        </Link>
+                        <p className="text-center text-xs text-gray-500 mt-2">Preferred for all users</p>
+                    </div>
 
-                    {error && (
-                        <div className="mb-4 p-4 bg-red-50 border-l-4 border-danger text-red-700 rounded-lg">
-                            {error}
+                    <div className="relative my-8">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-gray-200"></div>
                         </div>
-                    )}
+                        <div className="relative flex justify-center text-sm">
+                            <span className="px-4 bg-white text-gray-400 font-medium">or use password</span>
+                        </div>
+                    </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
