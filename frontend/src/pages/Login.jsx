@@ -72,6 +72,12 @@ const Login = () => {
                             />
                         </div>
 
+                        <div className="flex justify-end">
+                            <Link to="/verify" className="text-sm font-semibold text-primary hover:underline">
+                                Login with Email OTP / Forgot Password?
+                            </Link>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
