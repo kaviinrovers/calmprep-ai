@@ -86,6 +86,6 @@ app.listen(PORT, () => {
     console.log(`\n✨ CalmPrep AI Backend Running`);
     console.log(`📡 Server: http://localhost:${PORT}`);
     console.log(`🗄️  Database: Supabase (PostgreSQL)`);
-    console.log(`🤖 AI: Google Gemini`);
+    console.log(`🤖 AI: Hugging Face Inference`);
     console.log(`💳 Payment: Razorpay\n`);
 });

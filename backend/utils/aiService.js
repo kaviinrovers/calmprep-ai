@@ -1,41 +1,40 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { HfInference } from '@huggingface/inference';
+
+// Initialize Hugging Face
+const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
+// You can change this to other models like "meta-llama/Llama-3-8B-Instruct" 
+// or "mistralai/Mistral-7B-Instruct-v0.2"
+const MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2";
 
 /**
- * Helper to get Gemini model and handle API key check with fallback logic
+ * Helper to call Hugging Face and extract JSON
  */
-const getModelWithFallback = async (prompt, systemInstruction = "") => {
-  const apiKey = process.env.GEMINI_API_KEY;
+const callHF = async (prompt) => {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is missing. Please add it to your Render Environment Variables.');
+    throw new Error('HUGGINGFACE_API_KEY is missing. Please add it to your Render Environment Variables.');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
+  try {
+    const response = await hf.textGeneration({
+      model: MODEL_NAME,
+      inputs: `<s>[INST] ${prompt} [/INST]`,
+      parameters: {
+        max_new_tokens: 2048,
+        temperature: 0.1,
+        return_full_text: false,
+      },
+    });
 
-  // List of models to try in order of preference
-  // Forced to use 'v1' stable API to avoid 404s in certain regions
-  const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
-  let lastError = null;
-
-  for (const modelName of modelsToTry) {
-    try {
-      // Use the stable v1 API version explicitly
-      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error(`Gemini Error with model ${modelName}:`, error.message);
-      lastError = error;
-      // If it's a 404, we continue to the next model
-      if (error.message.includes('404') || error.message.includes('not found')) {
-        continue;
-      }
-      // If it's a different error (like API Key), we throw immediately
-      throw error;
+    return response.generated_text;
+  } catch (error) {
+    console.error('Hugging Face API Error:', error);
+    if (error.message.includes('429')) {
+      throw new Error('Hugging Face free tier limit reached. Please wait a few minutes or use your own API key.');
     }
+    throw error;
   }
-
-  throw lastError || new Error('All Gemini models failed to respond.');
 };
 
 /**
@@ -50,15 +49,15 @@ export const analyzePDFContent = async (pdfText) => {
     const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
 
 CONTENT TO ANALYZE:
-${pdfText}
+${pdfText.substring(0, 8000)} // Limit context for free tier
 
 INSTRUCTIONS:
 1. Split the content into logical units/chapters/topics
 2. For each unit, identify high, medium, and low importance topics.
-3. Predict exam questions (2, 5, and 10 marks) for each unit with guidance.
+3. Predict exam questions (2, 5, and 10 marks) for each unit.
 4. Provide marks-wise study guidance.
 
-IMPORTANT: Respond strictly in valid JSON format.
+IMPORTANT: Respond ONLY with a valid JSON object. No other text.
 
 JSON STRUCTURE:
 {
@@ -73,23 +72,23 @@ JSON STRUCTURE:
   ]
 }`;
 
-    const responseText = await getModelWithFallback(prompt);
+    const responseText = await callHF(prompt);
 
-    // Improved JSON extraction - handle markdown blocks
+    // Extract JSON from response
     let jsonString = responseText;
-    if (responseText.includes('```')) {
-      const match = responseText.match(/```(?:json)?([\s\S]*?)```/);
-      if (match) jsonString = match[1];
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonString = jsonMatch[0];
     }
 
     try {
       return JSON.parse(jsonString.trim());
     } catch (parseError) {
       console.error('JSON Parse Error Raw response:', responseText);
-      throw new Error('The AI returned an invalid response. Please try uploading the PDF again.');
+      throw new Error('Hugging Face returned an invalid response. Please try again or with a shorter PDF.');
     }
   } catch (error) {
-    console.error('Gemini Analysis Error:', error);
+    console.error('Analysis Error:', error);
     throw error;
   }
 };
@@ -111,34 +110,33 @@ export const generateAnswer = async (question, marks, pdfContext, language = 'en
       10: 'Provide a detailed answer with Introduction, Body, and Conclusion',
     };
 
-    const prompt = `You are a calm, friendly exam preparation tutor. Generate an exam-ready answer for this question based ONLY on the provided study material.
+    const prompt = `You are a calm, friendly exam preparation tutor. Generate an exam-ready answer for this question based on the provided study material.
 
 QUESTION: ${question}
 MARKS: ${marks}
 LANGUAGE: ${language}
 
-STUDY MATERIAL CONTEXT:
-${pdfContext}
+STUDY MATERIAL:
+${pdfContext.substring(0, 4000)}
 
 REQUIREMENTS:
 - ${marksGuidance[marks]}
 - ${languageInstruction[language]}
-- Base your answer STRICTLY on the provided study material.
 - Make it exam-ready and structured.
 
-Generate the answer now:`;
+Answer:`;
 
-    const answer = await getModelWithFallback(prompt);
+    const answer = await callHF(prompt);
 
     return {
       question,
       marks,
-      answer,
+      answer: answer.trim(),
       language,
       source: 'Based on your uploaded study material',
     };
   } catch (error) {
-    console.error('Gemini Answer Generation Error:', error);
+    console.error('Answer Generation Error:', error);
     throw error;
   }
 };
@@ -154,23 +152,20 @@ export const generateVoiceResponse = async (userMessage, context, language = 'en
       mixed: 'Respond in a mix of Tamil and English',
     };
 
-    const prompt = `You are a calm, patient, and friendly AI tutor helping a college student prepare for exams.
+    const prompt = `You are a calm AI tutor helping a college student.
+STUDENT: "${userMessage}"
+CONTEXT: ${context.substring(0, 2000)}
 
-STUDENT SAYS: "${userMessage}"
-CONTEXT: ${context}
-
-INSTRUCTIONS:
 - ${languageInstruction[language]}
 - Be encouraging and supportive.
-- Explain patiently.
 - Keep responses conversational.
 
-Respond naturally:`;
+Tutor response:`;
 
-    const voiceResponse = await getModelWithFallback(prompt);
-    return voiceResponse;
+    const voiceResponse = await callHF(prompt);
+    return voiceResponse.trim();
   } catch (error) {
-    console.error('Gemini Voice Response Error:', error);
+    console.error('Voice Response Error:', error);
     throw error;
   }
 };
@@ -180,19 +175,17 @@ Respond naturally:`;
  */
 export const conductViva = async (topic, difficulty = 'medium', language = 'english') => {
   try {
-    const prompt = `You are conducting an oral viva/exam for a college student.
-
+    const prompt = `You are conducting a viva.
 TOPIC: ${topic}
 DIFFICULTY: ${difficulty}
 LANGUAGE: ${language}
 
-Generate ONE viva question that tests understanding of the topic and can be answered verbally.
-Just return the question text (no explanation):`;
+Generate ONE viva question. Just the question text:`;
 
-    const question = await getModelWithFallback(prompt);
-    return question;
+    const question = await callHF(prompt);
+    return question.trim().split('\n')[0]; // Take first line
   } catch (error) {
-    console.error('Gemini Viva Generation Error:', error);
+    console.error('Viva Generation Error:', error);
     throw error;
   }
 };
