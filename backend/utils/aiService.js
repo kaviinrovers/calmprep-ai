@@ -1,8 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+/**
+ * Helper to get Gemini model and handle API key check
+ */
+const getModel = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is missing. Please add it to your Render Environment Variables.');
+  }
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+};
 
 /**
  * Analyze PDF content unit-wise with AI
@@ -11,7 +19,9 @@ export const analyzePDFContent = async (pdfText) => {
   if (!pdfText || pdfText.trim().length < 50) {
     throw new Error('PDF content is too short or could not be extracted. Please ensure the PDF is not a scan.');
   }
+
   try {
+    const model = getModel();
     const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
 
 CONTENT TO ANALYZE:
@@ -38,15 +48,11 @@ JSON STRUCTURE:
   ]
 }`;
 
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is missing in backend environment variables. Please add it to Render.');
-    }
-
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text();
 
-    // Improved JSON extraction
+    // Improved JSON extraction - handle markdown blocks
     let jsonString = responseText;
     if (responseText.includes('```')) {
       const match = responseText.match(/```(?:json)?([\s\S]*?)```/);
@@ -56,12 +62,12 @@ JSON STRUCTURE:
     try {
       return JSON.parse(jsonString.trim());
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError, 'Raw response:', responseText);
-      throw new Error('AI returned an invalid answer format. Please try again with a different PDF.');
+      console.error('JSON Parse Error Raw response:', responseText);
+      throw new Error('The AI returned an invalid response. Please try uploading the PDF again.');
     }
   } catch (error) {
     console.error('Gemini Analysis Error:', error);
-    throw new Error('Failed to analyze PDF content with Gemini');
+    throw error;
   }
 };
 
@@ -70,6 +76,7 @@ JSON STRUCTURE:
  */
 export const generateAnswer = async (question, marks, pdfContext, language = 'english') => {
   try {
+    const model = getModel();
     const languageInstruction = {
       english: 'Respond in English',
       tamil: 'Respond in Tamil',
@@ -112,7 +119,7 @@ Generate the answer now:`;
     };
   } catch (error) {
     console.error('Gemini Answer Generation Error:', error);
-    throw new Error('Failed to generate answer with Gemini');
+    throw error;
   }
 };
 
@@ -121,6 +128,7 @@ Generate the answer now:`;
  */
 export const generateVoiceResponse = async (userMessage, context, language = 'english') => {
   try {
+    const model = getModel();
     const languageInstruction = {
       english: 'Respond in English',
       tamil: 'Respond in Tamil',
@@ -146,7 +154,7 @@ Respond naturally:`;
     return voiceResponse;
   } catch (error) {
     console.error('Gemini Voice Response Error:', error);
-    throw new Error('Failed to generate voice response');
+    throw error;
   }
 };
 
@@ -155,6 +163,7 @@ Respond naturally:`;
  */
 export const conductViva = async (topic, difficulty = 'medium', language = 'english') => {
   try {
+    const model = getModel();
     const prompt = `You are conducting an oral viva/exam for a college student.
 
 TOPIC: ${topic}
@@ -170,7 +179,7 @@ Just return the question text (no explanation):`;
     return question;
   } catch (error) {
     console.error('Gemini Viva Generation Error:', error);
-    throw new Error('Failed to generate viva question');
+    throw error;
   }
 };
 
