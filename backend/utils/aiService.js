@@ -12,12 +12,14 @@ const getModelWithFallback = async (prompt, systemInstruction = "") => {
   const genAI = new GoogleGenerativeAI(apiKey);
 
   // List of models to try in order of preference
-  const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"];
+  // Forced to use 'v1' stable API to avoid 404s in certain regions
+  const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
   let lastError = null;
 
   for (const modelName of modelsToTry) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
+      // Use the stable v1 API version explicitly
+      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       return response.text();
