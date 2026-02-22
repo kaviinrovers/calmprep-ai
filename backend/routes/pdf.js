@@ -95,7 +95,10 @@ router.post('/analyze/:id', protect, async (req, res) => {
         res.json({ success: true, message: 'Analyzed successfully', units: analysis.units });
     } catch (error) {
         console.error('Analysis Error:', error);
-        res.status(500).json({ success: false, message: 'Analysis failed' });
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Analysis failed'
+        });
     }
 });
 

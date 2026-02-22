@@ -31,7 +31,11 @@ router.post('/create-order', protect, async (req, res) => {
             keyId: process.env.RAZORPAY_KEY_ID,
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Order creation failed' });
+        console.error('Order Creation Error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.description || error.message || 'Order creation failed'
+        });
     }
 });
 

@@ -8,6 +8,9 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
  * Analyze PDF content unit-wise with AI
  */
 export const analyzePDFContent = async (pdfText) => {
+  if (!pdfText || pdfText.trim().length < 50) {
+    throw new Error('PDF content is too short or could not be extracted. Please ensure the PDF is not a scan.');
+  }
   try {
     const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
 
@@ -35,14 +38,27 @@ JSON STRUCTURE:
   ]
 }`;
 
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is missing in backend environment variables. Please add it to Render.');
+    }
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    const responseText = response.text();
 
-    // Clean potential markdown code blocks from response
-    const jsonString = text.replace(/```json|```/g, '').trim();
-    const analysis = JSON.parse(jsonString);
-    return analysis;
+    // Improved JSON extraction
+    let jsonString = responseText;
+    if (responseText.includes('```')) {
+      const match = responseText.match(/```(?:json)?([\s\S]*?)```/);
+      if (match) jsonString = match[1];
+    }
+
+    try {
+      return JSON.parse(jsonString.trim());
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError, 'Raw response:', responseText);
+      throw new Error('AI returned an invalid answer format. Please try again with a different PDF.');
+    }
   } catch (error) {
     console.error('Gemini Analysis Error:', error);
     throw new Error('Failed to analyze PDF content with Gemini');
