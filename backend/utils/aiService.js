@@ -1,15 +1,39 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
- * Helper to get Gemini model and handle API key check
+ * Helper to get Gemini model and handle API key check with fallback logic
  */
-const getModel = () => {
+const getModelWithFallback = async (prompt, systemInstruction = "") => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is missing. Please add it to your Render Environment Variables.');
   }
+
   const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  // List of models to try in order of preference
+  const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"];
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error(`Gemini Error with model ${modelName}:`, error.message);
+      lastError = error;
+      // If it's a 404, we continue to the next model
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        continue;
+      }
+      // If it's a different error (like API Key), we throw immediately
+      throw error;
+    }
+  }
+
+  throw lastError || new Error('All Gemini models failed to respond.');
 };
 
 /**
@@ -21,7 +45,6 @@ export const analyzePDFContent = async (pdfText) => {
   }
 
   try {
-    const model = getModel();
     const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
 
 CONTENT TO ANALYZE:
@@ -48,9 +71,7 @@ JSON STRUCTURE:
   ]
 }`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const responseText = response.text();
+    const responseText = await getModelWithFallback(prompt);
 
     // Improved JSON extraction - handle markdown blocks
     let jsonString = responseText;
@@ -76,7 +97,6 @@ JSON STRUCTURE:
  */
 export const generateAnswer = async (question, marks, pdfContext, language = 'english') => {
   try {
-    const model = getModel();
     const languageInstruction = {
       english: 'Respond in English',
       tamil: 'Respond in Tamil',
@@ -106,9 +126,7 @@ REQUIREMENTS:
 
 Generate the answer now:`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const answer = response.text().trim();
+    const answer = await getModelWithFallback(prompt);
 
     return {
       question,
@@ -128,7 +146,6 @@ Generate the answer now:`;
  */
 export const generateVoiceResponse = async (userMessage, context, language = 'english') => {
   try {
-    const model = getModel();
     const languageInstruction = {
       english: 'Respond in English',
       tamil: 'Respond in Tamil',
@@ -148,9 +165,7 @@ INSTRUCTIONS:
 
 Respond naturally:`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const voiceResponse = response.text().trim();
+    const voiceResponse = await getModelWithFallback(prompt);
     return voiceResponse;
   } catch (error) {
     console.error('Gemini Voice Response Error:', error);
@@ -163,7 +178,6 @@ Respond naturally:`;
  */
 export const conductViva = async (topic, difficulty = 'medium', language = 'english') => {
   try {
-    const model = getModel();
     const prompt = `You are conducting an oral viva/exam for a college student.
 
 TOPIC: ${topic}
@@ -173,9 +187,7 @@ LANGUAGE: ${language}
 Generate ONE viva question that tests understanding of the topic and can be answered verbally.
 Just return the question text (no explanation):`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const question = response.text().trim();
+    const question = await getModelWithFallback(prompt);
     return question;
   } catch (error) {
     console.error('Gemini Viva Generation Error:', error);
