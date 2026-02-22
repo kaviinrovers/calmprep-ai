@@ -1,41 +1,10 @@
-import { HfInference } from '@huggingface/inference';
+import OpenAI from 'openai';
 
-// Initialize Hugging Face
-const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
-
-// You can change this to other models like "meta-llama/Llama-3-8B-Instruct" 
-// or "mistralai/Mistral-7B-Instruct-v0.2"
-const MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2";
-
-/**
- * Helper to call Hugging Face and extract JSON
- */
-const callHF = async (prompt) => {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  if (!apiKey) {
-    throw new Error('HUGGINGFACE_API_KEY is missing. Please add it to your Render Environment Variables.');
-  }
-
-  try {
-    const response = await hf.textGeneration({
-      model: MODEL_NAME,
-      inputs: `<s>[INST] ${prompt} [/INST]`,
-      parameters: {
-        max_new_tokens: 2048,
-        temperature: 0.1,
-        return_full_text: false,
-      },
-    });
-
-    return response.generated_text;
-  } catch (error) {
-    console.error('Hugging Face API Error:', error);
-    if (error.message.includes('429')) {
-      throw new Error('Hugging Face free tier limit reached. Please wait a few minutes or use your own API key.');
-    }
-    throw error;
-  }
-};
+// Initialize DeepSeek (OpenAI-compatible)
+const openai = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: 'https://api.deepseek.com',
+});
 
 /**
  * Analyze PDF content unit-wise with AI
@@ -46,49 +15,46 @@ export const analyzePDFContent = async (pdfText) => {
   }
 
   try {
-    const prompt = `You are an expert exam preparation AI tutor. Analyze this educational content and provide a detailed unit-wise breakdown.
-
-CONTENT TO ANALYZE:
-${pdfText.substring(0, 8000)} // Limit context for free tier
-
-INSTRUCTIONS:
-1. Split the content into logical units/chapters/topics
-2. For each unit, identify high, medium, and low importance topics.
-3. Predict exam questions (2, 5, and 10 marks) for each unit.
-4. Provide marks-wise study guidance.
-
-IMPORTANT: Respond ONLY with a valid JSON object. No other text.
-
-JSON STRUCTURE:
-{
-  "units": [
-    {
-      "unitNumber": 1,
-      "unitName": "Unit name",
-      "importantTopics": [{"text": "Topic", "importance": "high", "reason": "Reason"}],
-      "predictedQuestions": [{"question": "...", "marks": 2, "guidance": {"howToStart": "...", "keyPoints": [], "expectedLength": "...", "keywords": []}}],
-      "studyGuidance": {"twoMark": {"expectedLines": "...", "keywords": []}, "fiveMark": {"expectedPoints": "...", "diagramNeeded": true, "explanation": "..."}, "tenMark": {"structure": "...", "minimumLength": "...", "mustInclude": []}}
-    }
-  ]
-}`;
-
-    const responseText = await callHF(prompt);
-
-    // Extract JSON from response
-    let jsonString = responseText;
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonString = jsonMatch[0];
+    if (!process.env.DEEPSEEK_API_KEY) {
+      throw new Error('DEEPSEEK_API_KEY is missing. Please add it to your Render Environment Variables.');
     }
 
-    try {
-      return JSON.parse(jsonString.trim());
-    } catch (parseError) {
-      console.error('JSON Parse Error Raw response:', responseText);
-      throw new Error('Hugging Face returned an invalid response. Please try again or with a shorter PDF.');
-    }
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert exam preparation AI tutor. You analyze educational content and provide a detailed unit-wise breakdown in strict JSON format."
+        },
+        {
+          role: "user",
+          content: `Analyze this content and provide a unit-wise breakdown:
+          
+          ${pdfText}
+          
+          Respond ONLY with a JSON object in this structure:
+          {
+            "units": [
+              {
+                "unitNumber": 1,
+                "unitName": "Unit name",
+                "importantTopics": [{"text": "Topic", "importance": "high", "reason": "Reason"}],
+                "predictedQuestions": [{"question": "...", "marks": 2, "guidance": {"howToStart": "...", "keyPoints": [], "expectedLength": "...", "keywords": []}}],
+                "studyGuidance": {"twoMark": {"expectedLines": "...", "keywords": []}, "fiveMark": {"expectedPoints": "...", "diagramNeeded": true, "explanation": "..."}, "tenMark": {"structure": "...", "minimumLength": "...", "mustInclude": []}}
+              }
+            ]
+          }`
+        }
+      ],
+      model: "deepseek-chat",
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
   } catch (error) {
-    console.error('Analysis Error:', error);
+    console.error('DeepSeek Analysis Error:', error);
+    if (error.message.includes('Insufficient Balance')) {
+      throw new Error('DeepSeek API balance exhausted. Please top up your DeepSeek account.');
+    }
     throw error;
   }
 };
@@ -101,42 +67,28 @@ export const generateAnswer = async (question, marks, pdfContext, language = 'en
     const languageInstruction = {
       english: 'Respond in English',
       tamil: 'Respond in Tamil',
-      mixed: 'Respond in a mix of Tamil and English (Tanglish), using Tamil for explanations and English for technical terms',
+      mixed: 'Respond in a mix of Tamil and English (Tanglish)',
     };
 
-    const marksGuidance = {
-      2: 'Provide a brief 2-3 line answer with key keywords',
-      5: 'Provide a 5-7 point answer with brief explanations for each point',
-      10: 'Provide a detailed answer with Introduction, Body, and Conclusion',
-    };
+    const prompt = `Based on this context: ${pdfContext}
+    Generate an exam-ready answer for: ${question} (${marks} marks).
+    ${languageInstruction[language]}.
+    Make it structured and clear.`;
 
-    const prompt = `You are a calm, friendly exam preparation tutor. Generate an exam-ready answer for this question based on the provided study material.
-
-QUESTION: ${question}
-MARKS: ${marks}
-LANGUAGE: ${language}
-
-STUDY MATERIAL:
-${pdfContext.substring(0, 4000)}
-
-REQUIREMENTS:
-- ${marksGuidance[marks]}
-- ${languageInstruction[language]}
-- Make it exam-ready and structured.
-
-Answer:`;
-
-    const answer = await callHF(prompt);
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "deepseek-chat",
+    });
 
     return {
       question,
       marks,
-      answer: answer.trim(),
+      answer: completion.choices[0].message.content,
       language,
-      source: 'Based on your uploaded study material',
+      source: 'Generated by DeepSeek AI',
     };
   } catch (error) {
-    console.error('Answer Generation Error:', error);
+    console.error('DeepSeek Answer Error:', error);
     throw error;
   }
 };
@@ -146,26 +98,16 @@ Answer:`;
  */
 export const generateVoiceResponse = async (userMessage, context, language = 'english') => {
   try {
-    const languageInstruction = {
-      english: 'Respond in English',
-      tamil: 'Respond in Tamil',
-      mixed: 'Respond in a mix of Tamil and English',
-    };
-
-    const prompt = `You are a calm AI tutor helping a college student.
-STUDENT: "${userMessage}"
-CONTEXT: ${context.substring(0, 2000)}
-
-- ${languageInstruction[language]}
-- Be encouraging and supportive.
-- Keep responses conversational.
-
-Tutor response:`;
-
-    const voiceResponse = await callHF(prompt);
-    return voiceResponse.trim();
+    const completion = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: `You are a friendly AI tutor. Context: ${context}` },
+        { role: "user", content: userMessage }
+      ],
+      model: "deepseek-chat",
+    });
+    return completion.choices[0].message.content;
   } catch (error) {
-    console.error('Voice Response Error:', error);
+    console.error('DeepSeek Voice Error:', error);
     throw error;
   }
 };
@@ -175,17 +117,16 @@ Tutor response:`;
  */
 export const conductViva = async (topic, difficulty = 'medium', language = 'english') => {
   try {
-    const prompt = `You are conducting a viva.
-TOPIC: ${topic}
-DIFFICULTY: ${difficulty}
-LANGUAGE: ${language}
-
-Generate ONE viva question. Just the question text:`;
-
-    const question = await callHF(prompt);
-    return question.trim().split('\n')[0]; // Take first line
+    const completion = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: "You are conducting an oral viva. Generate one question." },
+        { role: "user", content: `Topic: ${topic}, Difficulty: ${difficulty}, Language: ${language}` }
+      ],
+      model: "deepseek-chat",
+    });
+    return completion.choices[0].message.content;
   } catch (error) {
-    console.error('Viva Generation Error:', error);
+    console.error('DeepSeek Viva Error:', error);
     throw error;
   }
 };
