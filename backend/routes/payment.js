@@ -14,6 +14,16 @@ const razorpay = new Razorpay({
 // @route POST /api/payment/create-order
 router.post('/create-order', protect, async (req, res) => {
     try {
+        const keyId = process.env.RAZORPAY_KEY_ID;
+        const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+        if (!keyId || !keySecret || keyId === 'rzp_test_your_key_id' || keySecret === 'your_razorpay_key_secret') {
+            return res.status(400).json({
+                success: false,
+                message: 'Razorpay keys are missing or invalid. Please add your actual RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Render environment variables.'
+            });
+        }
+
         const options = {
             amount: 9900,
             currency: 'INR',
