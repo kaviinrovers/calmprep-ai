@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 
 /**
  * Configure Nodemailer transporter
- * Note: Uses Gmail App Passwords for security
+ * Uses Gmail App Passwords for security
  */
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -13,32 +13,36 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * Send OTP Verification Email
+ * Send OTP Email
  * @param {string} to - Recipient email
- * @param {string} otp - 6-digit verification code
+ * @param {string} otpCode - 6-digit OTP code
  */
-export const sendOTPEmail = async (to, otp) => {
+export const sendOTPEmail = async (to, otpCode) => {
     const mailOptions = {
-        from: `"CampRep AI Security" <${process.env.GMAIL_USER}>`,
+        from: `"CalmPrep AI" <${process.env.GMAIL_USER}>`,
         to,
-        subject: 'Verification code for CampRep AI',
-        text: `Your verification code is ${otp}. This code expires in 10 minutes. Do not share this code with anyone. If you did not request this, please ignore this email.`,
+        subject: 'Your CalmPrep AI login code',
+        text: `Your login code for CalmPrep AI is: ${otpCode}. This code is valid for 10 minutes. Do not share this code with anyone. If you did not request this, you can safely ignore this email.`,
         html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-                <h2 style="color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-top: 0;">CampRep AI</h2>
-                <p style="color: #475569; font-size: 16px; line-height: 1.5;">
-                    A request has been made to access your account or set a new password. Use the following verification code to proceed:
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 40px; border: 1px solid #eef2f6; border-radius: 12px; background-color: #ffffff; color: #1a202c;">
+                <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #2d3748; text-align: center;">CalmPrep AI</h2>
+                <p style="font-size: 16px; line-height: 24px; margin-bottom: 24px; color: #4a5568; text-align: center;">
+                    Use the code below to sign in to your account.
                 </p>
-                <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-radius: 6px; margin: 20px 0;">
-                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #3b82f6;">${otp}</span>
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="display: inline-block; padding: 20px 40px; background-color: #f7fafc; border: 2px dashed #3182ce; border-radius: 12px;">
+                        <span style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #2d3748; font-family: 'Courier New', monospace;">${otpCode}</span>
+                    </div>
                 </div>
-                <p style="color: #475569; font-size: 14px;">
-                    This code will expire in <strong>10 minutes</strong>.
+                <p style="font-size: 14px; line-height: 20px; color: #718096; text-align: center; margin-bottom: 8px;">
+                    This code expires in <strong>10 minutes</strong>.
                 </p>
-                <p style="color: #64748b; font-size: 12px; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-                    For your security, do not share this code with anyone. CampRep AI team will never ask for this code over phone or message.<br><br>
-                    If you did not request this verification, you can safely ignore this email.
+                <p style="font-size: 14px; line-height: 20px; color: #718096; text-align: center; margin-bottom: 24px;">
+                    If you did not request this code, you can safely ignore this email.
                 </p>
+                <div style="border-top: 1px solid #edf2f7; padding-top: 24px; font-size: 12px; color: #a0aec0; text-align: center;">
+                    &copy; ${new Date().getFullYear()} CalmPrep AI. Secure Passwordless Authentication.
+                </div>
             </div>
         `,
     };
@@ -48,6 +52,6 @@ export const sendOTPEmail = async (to, otp) => {
         return true;
     } catch (error) {
         console.error('Email Sending Error:', error);
-        throw new Error('Failed to send verification email');
+        throw new Error('Failed to send OTP email');
     }
 };

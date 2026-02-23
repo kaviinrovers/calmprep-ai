@@ -4,9 +4,7 @@ import { useAuth } from './contexts/AuthContext';
 
 // Pages
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
-import AuthFlow from './pages/AuthFlow';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -31,8 +29,6 @@ function App() {
         <Router>
             <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/verify" element={<AuthFlow />} />
                 <Route
                     path="/dashboard/*"
                     element={

@@ -15,6 +15,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('token'));
 
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await axios.get('/api/auth/me');
             setUser(response.data.user);
+            setIsAuthenticated(true);
         } catch (error) {
             console.error('Failed to fetch user:', error);
             logout();
@@ -45,40 +47,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const login = async (email, password) => {
-        const response = await axios.post('/api/auth/login', { email, password });
-        const { token, user } = response.data;
-
-        localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setToken(token);
-        setUser(user);
-
-        return response.data;
-    };
-
-    const signup = async (name, email, password, language) => {
-        const response = await axios.post('/api/auth/signup', {
-            name,
-            email,
-            password,
-            language,
-        });
-        const { token, user } = response.data;
-
-        localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setToken(token);
-        setUser(user);
-
-        return response.data;
-    };
-
     const logout = () => {
         localStorage.removeItem('token');
         delete axios.defaults.headers.common['Authorization'];
         setToken(null);
         setUser(null);
+        setIsAuthenticated(false);
     };
 
     const updateLanguage = async (language) => {
@@ -89,12 +63,12 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         user,
+        setUser,
         loading,
-        login,
-        signup,
         logout,
         updateLanguage,
-        isAuthenticated: !!user,
+        isAuthenticated,
+        setIsAuthenticated,
         isPremium: user?.isPremium || false,
     };
 
