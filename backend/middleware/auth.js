@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import supabase from '../config/supabase.js';
 
 // Protect routes - verify JWT token
@@ -15,16 +14,22 @@ export const protect = async (req, res, next) => {
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            // Verify token with Supabase Auth
+            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
+            if (authError || !authUser) {
+                return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+            }
+
+            // Sync with our local users table (profiles)
             const { data: user, error } = await supabase
                 .from('users')
                 .select('*')
-                .eq('id', decoded.id)
+                .eq('email', authUser.email)
                 .single();
 
             if (error || !user) {
-                return res.status(401).json({ success: false, message: 'User not found' });
+                return res.status(401).json({ success: false, message: 'User profile not found' });
             }
 
             req.user = user;

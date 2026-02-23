@@ -2,15 +2,27 @@ import nodemailer from 'nodemailer';
 
 /**
  * Configure Nodemailer transporter
- * Uses Gmail App Passwords for security
+ * Prioritizes Resend SMTP, falls back to Gmail
  */
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-    },
-});
+const transporter = nodemailer.createTransport(
+    process.env.RESEND_API_KEY
+        ? {
+            host: 'smtp.resend.com',
+            port: 465,
+            secure: true,
+            auth: {
+                user: 'resend',
+                pass: process.env.RESEND_API_KEY,
+            },
+        }
+        : {
+            service: 'gmail',
+            auth: {
+                user: process.env.GMAIL_USER,
+                pass: process.env.GMAIL_APP_PASSWORD,
+            },
+        }
+);
 
 /**
  * Send OTP Email
@@ -18,8 +30,12 @@ const transporter = nodemailer.createTransport({
  * @param {string} otpCode - 6-digit OTP code
  */
 export const sendOTPEmail = async (to, otpCode) => {
+    const fromAddress = process.env.RESEND_API_KEY
+        ? `"CalmPrep AI" <onboarding@resend.dev>`
+        : `"CalmPrep AI" <${process.env.GMAIL_USER}>`;
+
     const mailOptions = {
-        from: `"CalmPrep AI" <${process.env.GMAIL_USER}>`,
+        from: fromAddress,
         to,
         subject: 'Your CalmPrep AI login code',
         text: `Your login code for CalmPrep AI is: ${otpCode}. This code is valid for 10 minutes. Do not share this code with anyone. If you did not request this, you can safely ignore this email.`,

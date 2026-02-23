@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import BookIntro from '../components/BookIntro';
+import { supabase } from '../lib/supabase';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -40,14 +41,20 @@ const Login = () => {
         setMessage('');
 
         try {
-            const response = await axios.post('/api/auth/send-otp', { email });
-            if (response.data.success) {
-                setStep('otp');
-                setMessage('A 6-digit code has been sent to your email.');
-                setCooldown(60);
-            }
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    shouldCreateUser: true,
+                }
+            });
+
+            if (error) throw error;
+
+            setStep('otp');
+            setMessage('A 6-digit code has been sent to your email.');
+            setCooldown(60);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+            setError(err.message || 'Failed to send OTP. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -94,17 +101,27 @@ const Login = () => {
         setError('');
 
         try {
-            const response = await axios.post('/api/auth/verify-otp', { email, otp: otpCode });
-            if (response.data.success) {
-                const { token, user } = response.data;
-                localStorage.setItem('token', token);
-                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                setUser(user);
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token: otpCode,
+                type: 'email',
+            });
+
+            if (error) throw error;
+
+            if (data?.session) {
+                const { access_token } = data.session;
+                localStorage.setItem('token', access_token);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+                // Fetch user profile from our backend to sync
+                const response = await axios.get('/api/auth/me');
+                setUser(response.data.user);
                 setIsAuthenticated(true);
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+            setError(err.message || 'Invalid OTP. Please try again.');
             setOtp(['', '', '', '', '', '']);
             otpRefs.current[0]?.focus();
         } finally {
@@ -119,15 +136,15 @@ const Login = () => {
         setMessage('');
 
         try {
-            const response = await axios.post('/api/auth/send-otp', { email });
-            if (response.data.success) {
-                setMessage('A new code has been sent to your email.');
-                setCooldown(60);
-                setOtp(['', '', '', '', '', '']);
-                otpRefs.current[0]?.focus();
-            }
+            const { error } = await supabase.auth.signInWithOtp({ email });
+            if (error) throw error;
+
+            setMessage('A new code has been sent to your email.');
+            setCooldown(60);
+            setOtp(['', '', '', '', '', '']);
+            otpRefs.current[0]?.focus();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to resend OTP.');
+            setError(err.message || 'Failed to resend OTP.');
         } finally {
             setLoading(false);
         }

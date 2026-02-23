@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
@@ -25,13 +26,29 @@ export const AuthProvider = ({ children }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
-    // Load user on mount
+    // Load user on mount and listen to auth changes
     useEffect(() => {
+        // Initial check
         if (token) {
             fetchUser();
         } else {
             setLoading(false);
         }
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session) {
+                const newToken = session.access_token;
+                localStorage.setItem('token', newToken);
+                setToken(newToken);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+                await fetchUser();
+            } else if (event === 'SIGNED_OUT') {
+                logout();
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, [token]);
 
     const fetchUser = async () => {
