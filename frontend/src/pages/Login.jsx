@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 
 const Login = () => {
     const navigate = useNavigate();
-    const { setUser, setIsAuthenticated } = useAuth();
+    const { setUser, setIsAuthenticated, isAuthenticated } = useAuth();
 
     const [introComplete, setIntroComplete] = useState(false);
     const [email, setEmail] = useState('');
