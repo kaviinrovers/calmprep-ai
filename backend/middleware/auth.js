@@ -22,14 +22,34 @@ export const protect = async (req, res, next) => {
             }
 
             // Sync with our local users table (profiles)
-            const { data: user, error } = await supabase
+            let { data: user, error } = await supabase
                 .from('users')
                 .select('*')
                 .eq('email', authUser.email)
                 .single();
 
+            // If user doesn't exist in our profile table, create them
             if (error || !user) {
-                return res.status(401).json({ success: false, message: 'User profile not found' });
+                console.log(`Creating new profile for ${authUser.email}...`);
+                const { data: newUser, error: createError } = await supabase
+                    .from('users')
+                    .insert([
+                        {
+                            id: authUser.id, // Use the same UUID from Supabase Auth
+                            email: authUser.email,
+                            name: authUser.email.split('@')[0], // Default name from email
+                            language: 'english',
+                            is_premium: false
+                        }
+                    ])
+                    .select()
+                    .single();
+
+                if (createError) {
+                    console.error('Error creating user profile:', createError);
+                    return res.status(500).json({ success: false, message: 'Failed to create user profile' });
+                }
+                user = newUser;
             }
 
             req.user = user;
