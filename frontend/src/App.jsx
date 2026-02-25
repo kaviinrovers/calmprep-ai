@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext';
 
 // Pages
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 
 // Protected Route Component
@@ -29,6 +30,7 @@ function App() {
         <Router>
             <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
                 <Route
                     path="/dashboard/*"
                     element={
