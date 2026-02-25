@@ -61,9 +61,8 @@ const Login = () => {
             });
 
             if (error) {
-                if (error.message.includes('fetch')) {
-                    throw new Error('Connection failed. Please check your internet or Supabase URL configuration.');
-                }
+                console.error('CRITICAL AUTH ERROR:', error);
+                setError(`Error: ${error.message}. Raw: ${JSON.stringify(error)}`);
                 throw error;
             }
 
