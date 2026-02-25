@@ -34,8 +34,17 @@ const Login = () => {
         }
     }, [step]);
 
+    // Safety net: Auto-redirect if already authenticated (e.g. from a link)
+    useEffect(() => {
+        if (introComplete && (isAuthenticated || !!localStorage.getItem('token'))) {
+            navigate('/dashboard');
+        }
+    }, [isAuthenticated, navigate, introComplete]);
+
     const handleSendOTP = async (e) => {
         e.preventDefault();
+        if (!email) return;
+
         setLoading(true);
         setError('');
         setMessage('');
@@ -44,17 +53,26 @@ const Login = () => {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
+                    // This ensures new users are created automatically
                     shouldCreateUser: true,
+                    // Redirect URL for desktop/mobile flows (optional but good practice)
+                    emailRedirectTo: window.location.origin,
                 }
             });
 
-            if (error) throw error;
+            if (error) {
+                if (error.message.includes('fetch')) {
+                    throw new Error('Connection failed. Please check your internet or Supabase URL configuration.');
+                }
+                throw error;
+            }
 
             setStep('otp');
-            setMessage('A 6-digit code has been sent to your email.');
+            setMessage(`A verification code has been sent to ${email}`);
             setCooldown(60);
         } catch (err) {
-            setError(err.message || 'Failed to send OTP. Please try again.');
+            console.error('OTP Send Error:', err);
+            setError(err.message || 'Failed to send login code. Please verify your email and try again.');
         } finally {
             setLoading(false);
         }
@@ -110,18 +128,24 @@ const Login = () => {
             if (error) throw error;
 
             if (data?.session) {
-                const { access_token } = data.session;
+                // Supabase automatically handles the session in the client, 
+                // but we sync it with our local state/backend
+                const { access_token, user } = data.session;
+
                 localStorage.setItem('token', access_token);
                 axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-                // Fetch user profile from our backend to sync
-                const response = await axios.get('/api/auth/me');
-                setUser(response.data.user);
+                setUser(user);
                 setIsAuthenticated(true);
-                navigate('/dashboard');
+
+                setMessage('Login successful! Redirecting...');
+                setTimeout(() => navigate('/dashboard'), 1500);
+            } else {
+                throw new Error('Verification successful but no session was created.');
             }
         } catch (err) {
-            setError(err.message || 'Invalid OTP. Please try again.');
+            console.error('OTP Verify Error:', err);
+            setError(err.message || 'Invalid or expired code. Please try again.');
             setOtp(['', '', '', '', '', '']);
             otpRefs.current[0]?.focus();
         } finally {
