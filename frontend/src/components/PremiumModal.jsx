@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 
 const PremiumModal = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ const PremiumModal = ({ onClose }) => {
             }
 
             // Create order
-            const orderResponse = await axios.post('/api/payment/create-order');
+            const orderResponse = await api.post('/api/payment/create-order');
             const { orderId, amount, currency, keyId } = orderResponse.data;
 
             // Razorpay options
@@ -43,7 +43,7 @@ const PremiumModal = ({ onClose }) => {
                 handler: async (response) => {
                     try {
                         // Verify payment
-                        await axios.post('/api/payment/verify', {
+                        await api.post('/api/payment/verify', {
                             orderId: response.razorpay_order_id,
                             paymentId: response.razorpay_payment_id,
                             signature: response.razorpay_signature,

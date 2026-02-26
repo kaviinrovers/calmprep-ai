@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const VoiceAssistant = () => {
@@ -63,7 +63,7 @@ const VoiceAssistant = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post('/api/voice/respond', {
+            const response = await api.post('/api/voice/respond', {
                 message: text,
                 context: conversation.map(c => `${c.role}: ${c.text}`).join('\n'),
             });
@@ -106,7 +106,7 @@ const VoiceAssistant = () => {
 
         setLoading(true);
         try {
-            const response = await axios.post('/api/voice/viva', {
+            const response = await api.post('/api/voice/viva', {
                 topic: vivaTopic,
                 difficulty: 'medium',
             });

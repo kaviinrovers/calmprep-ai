@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const AnswerGenerator = ({ pdfId, unit }) => {
@@ -22,7 +22,7 @@ const AnswerGenerator = ({ pdfId, unit }) => {
         setAnswer(null);
 
         try {
-            const response = await axios.post('/api/questions/answer', {
+            const response = await api.post('/api/questions/answer', {
                 question,
                 marks,
                 pdfId,

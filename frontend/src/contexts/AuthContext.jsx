@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -19,12 +17,6 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('token'));
-
-    // Configure axios defaults
-    axios.defaults.baseURL = API_URL;
-    if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
 
     // Load user on mount and listen to auth changes
     useEffect(() => {
@@ -41,7 +33,6 @@ export const AuthProvider = ({ children }) => {
                 const newToken = session.access_token;
                 localStorage.setItem('token', newToken);
                 setToken(newToken);
-                axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
                 await fetchUser();
             } else if (event === 'SIGNED_OUT') {
                 logout();
@@ -53,7 +44,7 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUser = async () => {
         try {
-            const response = await axios.get('/api/auth/me');
+            const response = await api.get('/api/auth/me');
             setUser(response.data.user);
             setIsAuthenticated(true);
         } catch (error) {
@@ -66,14 +57,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization'];
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);
     };
 
     const updateLanguage = async (language) => {
-        const response = await axios.put('/api/auth/language', { language });
+        const response = await api.put('/api/auth/language', { language });
         setUser({ ...user, language });
         return response.data;
     };

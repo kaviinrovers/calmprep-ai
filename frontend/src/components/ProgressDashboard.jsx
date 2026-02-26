@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 
 const ProgressDashboard = () => {
     const [summary, setSummary] = useState(null);
@@ -14,8 +14,8 @@ const ProgressDashboard = () => {
     const fetchProgressData = async () => {
         try {
             const [summaryRes, historyRes] = await Promise.all([
-                axios.get('/api/progress/summary'),
-                axios.get('/api/progress/history'),
+                api.get('/api/progress/summary'),
+                api.get('/api/progress/history'),
             ]);
 
             setSummary(summaryRes.data.summary);
@@ -109,8 +109,8 @@ const ProgressDashboard = () => {
 
                     <div
                         className={`p-6 rounded-xl text-center ${summary.examReady
-                                ? 'bg-gradient-to-r from-green-100 to-green-200'
-                                : 'bg-gradient-to-r from-yellow-100 to-orange-200'
+                            ? 'bg-gradient-to-r from-green-100 to-green-200'
+                            : 'bg-gradient-to-r from-yellow-100 to-orange-200'
                             }`}
                     >
                         <div className="text-5xl mb-3">

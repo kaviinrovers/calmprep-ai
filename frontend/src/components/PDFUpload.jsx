@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 
 const PDFUpload = ({ onUploadSuccess }) => {
     const [file, setFile] = useState(null);
@@ -60,7 +60,7 @@ const PDFUpload = ({ onUploadSuccess }) => {
             const formData = new FormData();
             formData.append('pdf', file);
 
-            const uploadResponse = await axios.post('/api/pdf/upload', formData, {
+            const uploadResponse = await api.post('/api/pdf/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
@@ -70,7 +70,7 @@ const PDFUpload = ({ onUploadSuccess }) => {
             setUploading(false);
             setAnalyzing(true);
 
-            const analyzeResponse = await axios.post(`/api/pdf/analyze/${pdfId}`);
+            const analyzeResponse = await api.post(`/api/pdf/analyze/${pdfId}`);
 
             setAnalyzing(false);
             onUploadSuccess({
